@@ -2,34 +2,199 @@
 import torch
 from torch import nn
 import warnings
+import help_functions
+from help_functions import project_onto_simplex,objctif_function,grad_obj_function,spectral_radius_AA_T
 
-
-
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Conex_polytop_attack(torch.nn.Module):
     '''
     '''
-    def __init__(self,A, b, x_init, tol=1e-6, verbose=False, device='cuda'):
+    def __init__(self,pre_trainet_model,target_pretrained_net,target_img,initialization_poison,
+                 optimization_method,s_coeff_list,base_tensors_for_poison_crafting,std,mean , poison_max_ier=5000,
+                 decay_start=1e5,decay_end=2e6,learning_rate_optim=0.01,momentum=0.9 ,tol=1e-6,verbose=False, 
+                 device=device):
         '''
+        The pre_trainet_model is the model that we want to attack. It can also correspond to a set of models 
+        to which we want to transfer the attack.
+        The target_pretrained_net corresponds the specific network we want to target with the attack.
+        The target_img is the set of clean images that we will modify to generate the poison images.
         '''
         super(Conex_polytop_attack, self).__init__()
 
-        self.A = A
-        self.b = b
-        self.x_init = x_init
+        self.pre_trainet_model = pre_trainet_model
+        self.target_img = target_img
+        self.target_pretrained_net = target_pretrained_net
+        self.initialization_poison=initialization_poison
+        self.s_coeff_list=s_coeff_list
         self.tol = tol
         self.verbose = verbose
         self.device = device
-        self.m,self.n=self.A.size()
+        self.optimization_method=optimization_method
+        self.learning_rate_optim=learning_rate_optim
+        self.momentum=momentum
+        self.base_tensors_for_poison_crafting=base_tensors_for_poison_crafting
+        self.poison_max_ier=poison_max_ier
+        self.dacay_start=decay_start
+        self.decay_end=decay_end
+        self.std=std
+        self.mean=mean
+        
 
-        if self.x_int==None:
-            self.x_init = torch.zeros(self.b.size(), device=self.device)
-        elif torch.is_tensor(self.x_init)==False:
-            self.x_init = torch.tensor(self.x_init, requires_grad=True)
-        if torch.is_tensor(self.A)==False:
-            self.A=torch.tensor(self.A, device=self.device)
-        if torch.is_tensor(self.b)==False:
-            self.b=torch.tensor(self.b, device=self.device)
-        if b.size()[0] != A.size()[0]:
-           raise RuntimeError(f"Dimensions of A and b do not match: {b.size()[0]} is different from {A.size()[0]}")
+
+
+        self.nbr_of_poisons = len(self.base_tensors_for_poison_crafting)
+        self.base_tensors_for_poison_crafting_concat = torch.stack(self.base_tensors_for_poison_crafting, 0)
+        self.poison_list = help_functions.Poisonlist(self.initialization_poison).to(self.device) # We create a batch of learnable parameters from a list of tensors, and provides a method to access these parameters to simplify the optimization process.
+        self.base_range01_batch = self.poison_list * std + mean
+        self.target_img=self.target_img.to(self.device)
+
+
+
+
+
+        if not isinstance(self.optimization_method, str):
+            raise ValueError("The optimization method should be a string")
+        elif not(self.optimization_method.lower() in ['sgd','signedadam','adam']):
+            raise ValueError("The optimization method should be SGD, SignedAdam or Adam")
+        else:
+            print(f'The optimization method is {self.optimization_method}')
+            if self.optimization_method.lower()=='sgd':
+                self.optimizer=torch.optim.SGD(self.poison_list.parameters(), lr=self.learning_rate_optim, momentum=self.momentum)
+            elif self.optimization_method.lower()=='signedadam':
+                self.optimizer=torch.optim.SignedAdam(self.poison_list.parameters(), lr=self.learning_rate_optim)
+            elif self.optimization_method.lower()=='adam': 
+                self.optimizer=torch.optim.Adam(self.poison_list.parameters(), lr=self.learning_rate_optim)
+        
+        if self.poison_max_ier > self.dacay_start and self.poison_max_ier < self.decay_end:
+            raise warnings.warn(f"The number of iterations is big.\n The learning rate will be decayed 
+                                starting from the {self.dacay_start} th ittration. 
+                                \n You can change the decay_start parameter to a bigger value if you want.")
+        
+        if self.poison_max_ier > self.decay_end:
+            raise warnings.warn(f"The number of iterations is big.
+                                \n The learning rate will be decayed from
+                                 the {self.dacay_start} th iteration  until 
+                                 the {self.decay_end} th ittration. \n You can change the
+                                decay_start and decay_end parameters to bigger values if you want.")
+
+            
+
+
+    
+    def step_inner_loop(A,b,x,i=0):
+        '''
+        This function calculates the step of the inner loop of the algorithm. 
+        '''
+        step=2/(spectral_radius_AA_T(A=A))
+        f=objctif_function(A=A,b=b)
+        grad_f=grad_obj_function(A=A,b=b)
+        
+        x_hat = x - step*grad_f(x)   # gradient descent  step
+        if f(x_hat) > f(x):       
+            step = step/2           # if the objective function strats increasing, we take a smaller step
+            i==+1
+            if i>20:
+                warnings.warn("The Gradient Descent is not converging.")
+        else:
+            x_new = project_onto_simplex(x_hat)  
+            x = x_new
+            i=0
+        return(x,i)
+
+
+    def inner_loop(A,b,x_0,tol_inner,itter_max):
+        '''
+        We perform the inner loop of the algorithm.To avoid the problem of the gradient 
+        descent not converging, we use a backtracking line search.
+        '''
+        x = x_0
+        iter=0
+        stopping_condition = False
+        i=0
+        while stopping_condition==False and iter<itter_max:
+            iter+=1
+            x_new,i_new=Conex_polytop_attack.step_inner_loop(A=A,b=b,x=x,i=i)
+            i=i_new
+            if i > 100:
+                warnings.warn("The Gradient Descent is diverging the algorithm will quit the loop .")
+                break
+            if torch.norm(x-x_new)/max(torch.norm(x), 1e-8)<tol_inner:
+                stopping_condition=True
+            x=x_new
+        return x
+    
+
+    def outer_loop(list_of_target_nets, list_of_target_featers, poison_batch, 
+                   s_coeff_list,max_itter_inner ,tol_inner):
+        """
+        This function calculates the step of the outer loop of the algorithm.
+        """
+        poison_network = [net(x=poison_batch(), penu=True) for net in list_of_target_nets]
+
+        for i, (poison_features_vect, target_feat) in enumerate(zip(poison_network, list_of_target_featers)):
+            s_coeff_list[i] = Conex_polytop_attack.inner_loop(A=poison_features_vect.t().detach(), b=target_feat.t().detach(),
+                                                    x_0=s_coeff_list[i], tol=tol_inner,itter_max=max_itter_inner)
+
+        total_loss = 0
+        # Calculate the loss after one ster of the outer loop
+        for net, s_coeff, target_feat, poison_feat_mat in zip(list_of_target_nets, s_coeff_list, 
+                                                              list_of_target_featers, poison_network):
+
+            residual = target_feat - torch.sum(s_coeff * poison_feat_mat, 0, keepdim=True)
+            target_norm_square = torch.sum(target_feat ** 2)
+            recon_loss = 0.5 * torch.sum(residual**2) / target_norm_square
+            total_loss += recon_loss
+
+
+        return total_loss, s_coeff_list
+        
+    
+
+
+
+
+    def poisan_generation(self,decay_ratio=0.1,tol_inner=1e-6,max_itter_inner=10000,epsilon=0.1,pos_label_poison=-1):
+        '''
+        This function corresponds to the algorithm 1 of the paper.
+        '''
+
+        self.target_pretrained_net.eval() # We put the target model in evaluation mode so that our attck is not trained on the target model.
+        std, mean = std.to(self.device), mean.to(self.device)
+        target_list = []
+        s_init_coeff_list = []
+        
+        iter=0
+
+        for l,net in enumerate(self.pre_trainet_model): # We loop over the models that we want to attack.
+            net.eval() # We put the model in evaluation mode so that our attck is not trained on the model.
+            target_list.append(net(x=self.target_img, penu=True).detach())
+            s_init_coeff_list.append(torch.ones(self.nbr_of_poisons, 1).to(self.device) / self.nbr_of_poisons)
+        while iter<self.poison_max_ier and iter<self.decay_end+1:
+            
+            if iter==self.dacay_start:
+                raise warnings.warn(f"Starting from this iteration ie {iter} th iteration, the learning 
+                                    rate will be decayed by {decay_ratio} at each itteration.\n You can change 
+                                    by default parameters if you wish.")
+
+            if iter >  self.dacay_start and iter <  self.decay_end:
+                for param_group in self.optimizer.param_groups:
+                    param_group['lr'] *= decay_ratio
+            if iter==self.decay_end:
+                raise warnings.warn(f"Starting from this iteration ie {iter} th iteration, the optimization procedure will stop.
+                                    \n You can change the decay_end parameter if you wish.")
+            
+
+            self.poison_list.zero_grad()
+            total_loss, s_init_coeff_list = Conex_polytop_attack.outer_loop(A=self.pre_trainet_model,b=target_list,poison_batch=self.poison_list, 
+                                                       s_coeff_list=s_init_coeff_list,max_itter_inner=max_itter_inner ,tol_inner=tol_inner)
+            total_loss.backward()
+            self.optimizer.step()
+            # cliping the poison images so that the infinity norm constraint is satisfied..
+            perturb_range01 = torch.clamp((self.poison_list.venom.data - self.base_tensors_for_poison_crafting_concat) * std, -epsilon, epsilon)
+            perturbed_range01 = torch.clamp(self.base_range01_batch.data + perturb_range01.data, 0, 1)
+            self.poison_list.venom.data = (perturbed_range01 - self.mean) / self.std
+            # Update the itteration
+            iter+=1
+        return help_functions.get_poison_tuples(self.poison_list, pos_label_poison), total_loss.item()
