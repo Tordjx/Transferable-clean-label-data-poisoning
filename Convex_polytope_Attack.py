@@ -68,16 +68,16 @@ class Convex_polytop_attack(torch.nn.Module):
                 self.optimizer=torch.optim.Adam(self.poison_list.parameters(), lr=self.learning_rate_optim)
         
         if self.poison_max_iter > self.dacay_start and self.poison_max_iter < self.decay_end:
-            raise warnings.warn(f"The number of iterations is big.\n The learning rate will be decayed 
+            raise warnings.warn(f'''The number of iterations is big.\n The learning rate will be decayed 
                                 starting from the {self.dacay_start} th ittration. 
-                                \n You can change the decay_start parameter to a bigger value if you want.")
+                                \n You can change the decay_start parameter to a bigger value if you want.''')
         
         if self.poison_max_iter > self.decay_end:
-            raise warnings.warn(f"The number of iterations is big.
+            raise warnings.warn(f'''The number of iterations is big.
                                 \n The learning rate will be decayed from
                                  the {self.dacay_start} th iteration  until 
                                  the {self.decay_end} th ittration. \n You can change the
-                                decay_start and decay_end parameters to bigger values if you want.")
+                                decay_start and decay_end parameters to bigger values if you want.''')
 
             
 
@@ -182,16 +182,16 @@ class Convex_polytop_attack(torch.nn.Module):
         while iter<self.poison_max_iter and iter<self.decay_end+1:
             
             if iter==self.dacay_start:
-                raise warnings.warn(f"Starting from this iteration ie {iter} th iteration, the learning 
+                raise warnings.warn(f'''Starting from this iteration ie {iter} th iteration, the learning 
                                     rate will be decayed by {decay_ratio} at each itteration.\n You can change 
-                                    by default parameters if you wish.")
+                                    by default parameters if you wish.''')
 
             if iter >  self.dacay_start and iter <  self.decay_end:
                 for param_group in self.optimizer.param_groups:
                     param_group['lr'] *= decay_ratio
             if iter==self.decay_end:
-                raise warnings.warn(f"Starting from this iteration ie {iter} th iteration, the optimization procedure will stop.
-                                    \n You can change the decay_end parameter if you wish.")
+                raise warnings.warn(f'''Starting from this iteration ie {iter} th iteration, the optimization procedure will stop.
+                                    \n You can change the decay_end parameter if you wish.''')
             
 
             self.poison_list.zero_grad()
