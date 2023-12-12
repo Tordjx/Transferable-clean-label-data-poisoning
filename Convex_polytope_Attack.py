@@ -9,8 +9,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Convex_polytop_attack(torch.nn.Module):
-    '''
-    '''
+
     def __init__(self,pre_trained_model,target_img,initialization_poison,
                  optimization_method,s_coeff_list,base_tensors_for_poison_crafting,std,mean , poison_max_iter=5000,
                  decay_start=1e5,decay_end=2e6,learning_rate_optim=0.01,momentum=0.9 ,tol=1e-6,verbose=False, 
