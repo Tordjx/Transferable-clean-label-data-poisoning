@@ -8,11 +8,11 @@ from help_functions import project_onto_simplex,objctif_function,grad_obj_functi
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Conex_polytop_attack(torch.nn.Module):
+class Convex_polytop_attack(torch.nn.Module):
     '''
     '''
-    def __init__(self,pre_trainet_model,target_pretrained_net,target_img,initialization_poison,
-                 optimization_method,s_coeff_list,base_tensors_for_poison_crafting,std,mean , poison_max_ier=5000,
+    def __init__(self,pre_trained_model,target_pretrained_net,target_img,initialization_poison,
+                 optimization_method,s_coeff_list,base_tensors_for_poison_crafting,std,mean , poison_max_iter=5000,
                  decay_start=1e5,decay_end=2e6,learning_rate_optim=0.01,momentum=0.9 ,tol=1e-6,verbose=False, 
                  device=device):
         '''
@@ -21,9 +21,9 @@ class Conex_polytop_attack(torch.nn.Module):
         The target_pretrained_net corresponds the specific network we want to target with the attack.
         The target_img is the set of clean images that we will modify to generate the poison images.
         '''
-        super(Conex_polytop_attack, self).__init__()
+        super(Convex_polytop_attack, self).__init__()
 
-        self.pre_trainet_model = pre_trainet_model
+        self.pre_trained_model = pre_trained_model
         self.target_img = target_img
         self.target_pretrained_net = target_pretrained_net
         self.initialization_poison=initialization_poison
@@ -35,7 +35,7 @@ class Conex_polytop_attack(torch.nn.Module):
         self.learning_rate_optim=learning_rate_optim
         self.momentum=momentum
         self.base_tensors_for_poison_crafting=base_tensors_for_poison_crafting
-        self.poison_max_ier=poison_max_ier
+        self.poison_max_iter=poison_max_iter
         self.dacay_start=decay_start
         self.decay_end=decay_end
         self.std=std
@@ -67,12 +67,12 @@ class Conex_polytop_attack(torch.nn.Module):
             elif self.optimization_method.lower()=='adam': 
                 self.optimizer=torch.optim.Adam(self.poison_list.parameters(), lr=self.learning_rate_optim)
         
-        if self.poison_max_ier > self.dacay_start and self.poison_max_ier < self.decay_end:
+        if self.poison_max_iter > self.dacay_start and self.poison_max_iter < self.decay_end:
             raise warnings.warn(f"The number of iterations is big.\n The learning rate will be decayed 
                                 starting from the {self.dacay_start} th ittration. 
                                 \n You can change the decay_start parameter to a bigger value if you want.")
         
-        if self.poison_max_ier > self.decay_end:
+        if self.poison_max_iter > self.decay_end:
             raise warnings.warn(f"The number of iterations is big.
                                 \n The learning rate will be decayed from
                                  the {self.dacay_start} th iteration  until 
@@ -115,7 +115,7 @@ class Conex_polytop_attack(torch.nn.Module):
         i=0
         while stopping_condition==False and iter<itter_max:
             iter+=1
-            x_new,i_new=Conex_polytop_attack.step_inner_loop(A=A,b=b,x=x,i=i)
+            x_new,i_new=Convex_polytop_attack.step_inner_loop(A=A,b=b,x=x,i=i)
             i=i_new
             if i > 100:
                 warnings.warn("The Gradient Descent is diverging the algorithm will quit the loop .")
@@ -134,7 +134,7 @@ class Conex_polytop_attack(torch.nn.Module):
         poison_network = [net(x=poison_batch(), penu=True) for net in list_of_target_nets]
 
         for i, (poison_features_vect, target_feat) in enumerate(zip(poison_network, list_of_target_featers)):
-            s_coeff_list[i] = Conex_polytop_attack.inner_loop(A=poison_features_vect.t().detach(), b=target_feat.t().detach(),
+            s_coeff_list[i] = Convex_polytop_attack.inner_loop(A=poison_features_vect.t().detach(), b=target_feat.t().detach(),
                                                     x_0=s_coeff_list[i], tol=tol_inner,itter_max=max_itter_inner)
 
         total_loss = 0
@@ -167,11 +167,11 @@ class Conex_polytop_attack(torch.nn.Module):
         
         iter=0
 
-        for l,net in enumerate(self.pre_trainet_model): # We loop over the models that we want to attack.
+        for l,net in enumerate(self.pre_trained_model): # We loop over the models that we want to attack.
             net.eval() # We put the model in evaluation mode so that our attck is not trained on the model.
             target_list.append(net(x=self.target_img, penu=True).detach())
             s_init_coeff_list.append(torch.ones(self.nbr_of_poisons, 1).to(self.device) / self.nbr_of_poisons)
-        while iter<self.poison_max_ier and iter<self.decay_end+1:
+        while iter<self.poison_max_iter and iter<self.decay_end+1:
             
             if iter==self.dacay_start:
                 raise warnings.warn(f"Starting from this iteration ie {iter} th iteration, the learning 
@@ -187,7 +187,7 @@ class Conex_polytop_attack(torch.nn.Module):
             
 
             self.poison_list.zero_grad()
-            total_loss, s_init_coeff_list = Conex_polytop_attack.outer_loop(A=self.pre_trainet_model,b=target_list,poison_batch=self.poison_list, 
+            total_loss, s_init_coeff_list = Convex_polytop_attack.outer_loop(A=self.pre_trained_model,b=target_list,poison_batch=self.poison_list, 
                                                        s_coeff_list=s_init_coeff_list,max_itter_inner=max_itter_inner ,tol_inner=tol_inner)
             total_loss.backward()
             self.optimizer.step()
