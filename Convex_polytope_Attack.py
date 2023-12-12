@@ -11,21 +11,23 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class Convex_polytop_attack(torch.nn.Module):
     '''
     '''
-    def __init__(self,pre_trained_model,target_pretrained_net,target_img,initialization_poison,
+    def __init__(self,pre_trained_model,target_img,initialization_poison,
                  optimization_method,s_coeff_list,base_tensors_for_poison_crafting,std,mean , poison_max_iter=5000,
                  decay_start=1e5,decay_end=2e6,learning_rate_optim=0.01,momentum=0.9 ,tol=1e-6,verbose=False, 
                  device=device):
         '''
         The pre_trainet_model is the model that we want to attack. It can also correspond to a set of models 
-        to which we want to transfer the attack.
-        The target_pretrained_net corresponds the specific network we want to target with the attack.
+        to which we want to transfer the attack. In the paper it corresponds to the set of phi^(i) that we will loop over
+        in order to creat A at each step of the inner loop.
         The target_img is the set of clean images that we will modify to generate the poison images.
+        initialization_poison is a an array of the stat of the poisning it is usefull from a practical point of view.
+        
         '''
         super(Convex_polytop_attack, self).__init__()
 
         self.pre_trained_model = pre_trained_model
         self.target_img = target_img
-        self.target_pretrained_net = target_pretrained_net
+        #self.target_pretrained_net = target_pretrained_net
         self.initialization_poison=initialization_poison
         self.s_coeff_list=s_coeff_list
         self.tol = tol
@@ -86,6 +88,11 @@ class Convex_polytop_attack(torch.nn.Module):
     def step_inner_loop(A,b,x,i=0):
         '''
         This function calculates the step of the inner loop of the algorithm. 
+        The A of this function is the same as the one defined in the paper. 
+        However for the step we consider the spectral radius of A*A^T instead of the l_2 norm of A*A^T.
+        The objective funciton calculated here is the euclidian distance between Ax and b. 
+        Grad_f corresponds to the term A.T(Ac^(i)-phi^(i)(x_t)) in the paper so that we just compute a simple
+        gradient descent step. Finally b corresponds to phi^(i)(x) in the paper and x corresponds to c^(i) in the paper.
         '''
         step=2/(spectral_radius_AA_T(A=A))
         f=objctif_function(A=A,b=b)
@@ -108,6 +115,7 @@ class Convex_polytop_attack(torch.nn.Module):
         '''
         We perform the inner loop of the algorithm.To avoid the problem of the gradient 
         descent not converging, we use a backtracking line search.
+        We are just performing a loop with some stopping condition.
         '''
         x = x_0
         iter=0
@@ -130,6 +138,8 @@ class Convex_polytop_attack(torch.nn.Module):
                    s_coeff_list,max_itter_inner ,tol_inner):
         """
         This function calculates the step of the outer loop of the algorithm.
+        In this function list_of_target_nets corresponds to the set of phi^(i) that we will loop over
+        in order to creat A at each step of the inner loop.
         """
         poison_network = [net(x=poison_batch(), penu=True) for net in list_of_target_nets]
 
@@ -160,7 +170,7 @@ class Convex_polytop_attack(torch.nn.Module):
         This function corresponds to the algorithm 1 of the paper.
         '''
 
-        self.target_pretrained_net.eval() # We put the target model in evaluation mode so that our attck is not trained on the target model.
+        #self.target_pretrained_net.eval() # We put the target model in evaluation mode so that our attck is not trained on the target model.
         std, mean = std.to(self.device), mean.to(self.device)
         target_list = []
         s_init_coeff_list = []
