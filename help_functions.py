@@ -58,6 +58,50 @@ def get_poison_tuples(poison_batch, poison_label):
 
     return poison_tuple
 
+def get_poison_tuples(poison_batch, poison_label):
+    """
+    Includes the labels
+    """
+    poison_tuple = [(poison_batch.poison.data[num_p].detach().cpu(), poison_label) for num_p in range(poison_batch.poison.size(0))]
+
+    return poison_tuple
+
+
+def fetch_target(target_label, target_index, start_idx, path, subset, transforms):
+    """
+    Fetch the "target_index"-th target, counting starts from start_idx
+    """
+    img_label_list = torch.load(path)[subset]
+    counter = 0
+    for idx, (img, label) in enumerate(img_label_list):
+        if label == target_label:
+            counter += 1
+            if counter == (target_index + start_idx + 1):
+                if transforms is not None:
+                    return transforms(img)[None, :,:,:]
+                else:
+                    return np.array(img)[None,:,:,:]
+    raise Exception("Target with index {} exceeds number of total samples (should be less than {})".format(
+                            target_index, len(img_label_list)/10-start_idx))
+
+
+def load_pretrained_net(net_name, chk_name, model_chk_path, test_dp=0):
+    """
+    Load the pre-trained models. CUDA only :)
+    """
+    net = eval(net_name)(test_dp=test_dp)
+    net = torch.nn.DataParallel(net).cuda()
+    net.eval()
+    print('==> Resuming from checkpoint for %s..' % net_name)
+    checkpoint = torch.load('./{}/{}'.format(model_chk_path, chk_name) % net_name)
+    if 'module' not in list(checkpoint['net'].keys())[0]:
+        # to be compatible with DataParallel
+        net.module.load_state_dict(checkpoint['net'])
+    else:
+        net.load_state_dict(checkpoint['net'])
+
+    return net
+
 
 class Poisonlist(torch.nn.Module):
     """
