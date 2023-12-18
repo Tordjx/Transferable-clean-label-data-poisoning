@@ -102,6 +102,45 @@ def load_pretrained_net(net_name, chk_name, model_chk_path, test_dp=0):
 
     return net
 
+def find_all_target_classes(target_label, number_of_tensors_per_class, subset, data_base_path, transforms):
+    subset_data_base = torch.load(data_base_path)[subset]
+    i = 0
+    class_tensors = []
+    idx_of_tensors = []
+    for idx, (img, label) in enumerate(subset_data_base):
+        if label == target_label:
+            if i <= number_of_tensors_per_class:
+                class_tensors.append(transforms(img))
+                idx_of_tensors.append(idx)
+                i += 1
+    return torch.stack(class_tensors), idx_of_tensors
+
+
+def get_target_nearest_neighbor(models_list, target_class, target, num_imgs, idx_list, device):
+    target= target.to(device)
+    target_class = target_class.to(device)
+    total_dists = 0
+    with torch.no_grad():
+        for n_net, net in enumerate(models_list):
+            target_img_feat = net.module.penultimate(target)
+            target_cls_imgs_feat = net.module.penultimate(target_class)
+            dists = torch.sum((target_img_feat-target_cls_imgs_feat)**2, 1).cpu().detach().numpy()
+            total_dists += dists
+    min_dist_idxes = np.argsort(total_dists)
+    return target_class[min_dist_idxes[:num_imgs]], [idx_list[midx] for midx in min_dist_idxes[:num_imgs]]
+
+
+def get_nearest_poison(models_list, target, num_poison, poison_label, num_per_class, subset,
+                               data_base_path, transforms,device):
+    imgs, idxes = find_all_target_classes(target_label=poison_label, num_per_class=num_per_class, subset=subset, data_base_path=data_base_path, transforms=transforms)
+
+    nn_imgs_batch, nn_idx_list = get_target_nearest_neighbor(models_list=models_list, target_class=imgs, target=target, num_imgs=num_poison, idx_list=idxes, 
+                                                             device=device)
+    base_tensor_list = [nn_imgs_batch[n] for n in range(nn_imgs_batch.size(0))]
+    print("Selected nearest neighbors: {}".format(nn_idx_list))
+    return base_tensor_list, nn_idx_list
+
+
 
 class Poisonlist(torch.nn.Module):
     """

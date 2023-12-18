@@ -3,30 +3,29 @@ import torch
 from torch import nn
 import warnings
 import help_functions
-from help_functions import project_onto_simplex,objctif_function,grad_obj_function,spectral_radius_AA_T
-
+from help_functions import project_onto_simplex,objctif_function,grad_obj_function,spectral_radius_AA_T,get_nearest_poison
+import torchvision.transforms as transforms
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Convex_polytop_attack(torch.nn.Module):
 
-    def __init__(self,pre_trained_model,target_img,
-                 optimization_method,base_tensors_for_poison_crafting,std,mean,initialization_poison=None , poison_max_iter=5000,
+    def __init__(self,pre_trained_model,target_img,poison_label,subset,
+                 optimization_method,std,mean,poison_nearest_neighbor_tensor=None,path_to_database='',initialization_poison=None , poison_max_iter=5000,
                  decay_start=1e5,decay_end=2e6,learning_rate_optim=0.01,momentum=0.9 ,tol=1e-6,verbose=False, 
-                 device=device):
+                 device=device,nbr_of_neighbours_for_poison=5,number_of_tensors_per_class_for_poison_feteching=10,transforms=transforms):
         '''
         The pre_trainet_model is the model that we want to attack. It can also correspond to a set of models 
         to which we want to transfer the attack. In the paper it corresponds to the set of phi^(i) that we will loop over
         in order to creat A at each step of the inner loop.
         The target_img is the set of clean images that we will modify to generate the poison images.
         initialization_poison is a an array of the stat of the poisning it is usefull from a practical point of view.
-        
+        mean and std are the mean and the standard deviation of the dataset on which the model was trained.
         '''
         super(Convex_polytop_attack, self).__init__()
 
         self.pre_trained_model = pre_trained_model
         self.target_img = target_img
-        #self.target_pretrained_net = target_pretrained_net
         self.initialization_poison=initialization_poison
         self.tol = tol
         self.verbose = verbose
@@ -34,21 +33,40 @@ class Convex_polytop_attack(torch.nn.Module):
         self.optimization_method=optimization_method
         self.learning_rate_optim=learning_rate_optim
         self.momentum=momentum
-        self.base_tensors_for_poison_crafting=base_tensors_for_poison_crafting
+        self.poison_nearest_neighbor_tensor=poison_nearest_neighbor_tensor
         self.poison_max_iter=poison_max_iter
         self.dacay_start=decay_start
         self.decay_end=decay_end
         self.std=std
         self.mean=mean
+        self.path_to_database=path_to_database
+        self.nbr_of_neighbours_for_poison=nbr_of_neighbours_for_poison
+        self.poison_label=poison_label
+        self.number_of_tensors_per_class_for_poison_feteching=number_of_tensors_per_class_for_poison_feteching
+        self.subset=subset
+        self.transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(self.mean, self.std),])
+
+        if path_to_database=='' and poison_nearest_neighbor_tensor==None:
+            raise ValueError("You must provide a path to the database or a tensor of nearest neighbors of the target images.")
+        elif path_to_database!='':
+            self.poison_nearest_neighbor_tensor,indexes=get_nearest_poison(models_list=self.pre_trained_model, 
+                    target=self.target_img, num_poison=self.nbr_of_neighbours_for_poison, 
+                    poison_label=self.poison_label, num_per_class=self.number_of_tensors_per_class_for_poison_feteching, 
+                    subset=self.subset,transforms=self.transform,data_base_path=self.path_to_database,device=self.device)
         
 
+        self.poison_nearest_neighbor_tensor=[tensor.to('cuda') for tensor in self.poison_nearest_neighbor_tensor]                      
+        self.initialization_poison=self.poison_nearest_neighbor_tensor
 
-
-        self.nbr_of_poisons = len(self.base_tensors_for_poison_crafting)
-        self.base_tensors_for_poison_crafting_concat = torch.stack(self.base_tensors_for_poison_crafting, 0)
+        self.nbr_of_poisons = len(self.poison_nearest_neighbor_tensor)
+        self.poison_nearest_neighbor_tensor_concat = torch.stack(self.poison_nearest_neighbor_tensor, 0)
         self.poison_list = help_functions.Poisonlist(self.initialization_poison).to(self.device) # We create a batch of learnable parameters from a list of tensors, and provides a method to access these parameters to simplify the optimization process.
         self.base_range01_batch = self.poison_list * std + mean
         self.target_img=self.target_img.to(self.device)
+
+
 
 
 
@@ -79,7 +97,7 @@ class Convex_polytop_attack(torch.nn.Module):
                                  the {self.decay_end} th ittration. \n You can change the
                                 decay_start and decay_end parameters to bigger values if you want.''')
 
-            
+        print(f"You are now ready to perform the attack. \n Here is a summary of the parameters that you have chosen: \n { self.__repr__()}")
 
 
     
@@ -200,7 +218,7 @@ class Convex_polytop_attack(torch.nn.Module):
             total_loss.backward()
             self.optimizer.step()
             # cliping the poison images so that the infinity norm constraint is satisfied..
-            perturb_range01 = torch.clamp((self.poison_list.venom.data - self.base_tensors_for_poison_crafting_concat) * std, -epsilon, epsilon)
+            perturb_range01 = torch.clamp((self.poison_list.venom.data - self.poison_nearest_neighbor_tensor_concat) * std, -epsilon, epsilon)
             perturbed_range01 = torch.clamp(self.base_range01_batch.data + perturb_range01.data, 0, 1)
             self.poison_list.venom.data = (perturbed_range01 - self.mean) / self.std
             # Update the itteration
