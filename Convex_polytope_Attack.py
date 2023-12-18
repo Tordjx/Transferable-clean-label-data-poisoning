@@ -97,7 +97,7 @@ class Convex_polytop_attack(torch.nn.Module):
                                  the {self.decay_end} th ittration. \n You can change the
                                 decay_start and decay_end parameters to bigger values if you want.''')
 
-        print(f"You are now ready to perform the attack. \n Here is a summary of the parameters that you have chosen: \n { self.__repr__()}")
+        print(f"You are now ready to perform the attack. \n Here is a summary of the parameters that you have chosen: \n { vars(self)}")
 
 
     
