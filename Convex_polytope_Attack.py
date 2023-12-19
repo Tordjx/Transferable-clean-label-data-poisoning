@@ -37,8 +37,8 @@ class Convex_polytop_attack(torch.nn.Module):
         self.poison_max_iter=poison_max_iter
         self.dacay_start=decay_start
         self.decay_end=decay_end
-        self.std=std
-        self.mean=mean
+        self.std=(torch.Tensor(std).reshape(1, 3, 1, 1)).to(self.device)
+        self.mean=torch.Tensor(mean).reshape(1, 3, 1, 1).to(self.device)
         self.path_to_database=path_to_database
         self.nbr_of_neighbours_for_poison=nbr_of_neighbours_for_poison
         self.poison_label=poison_label
