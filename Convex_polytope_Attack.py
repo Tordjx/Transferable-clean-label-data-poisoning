@@ -63,7 +63,7 @@ class Convex_polytop_attack(torch.nn.Module):
         self.nbr_of_poisons = len(self.poison_nearest_neighbor_tensor)
         self.poison_nearest_neighbor_tensor_concat = torch.stack(self.poison_nearest_neighbor_tensor, 0)
         self.poison_list = help_functions.Poisonlist(self.initialization_poison).to(self.device) # We create a batch of learnable parameters from a list of tensors, and provides a method to access these parameters to simplify the optimization process.
-        self.base_range01_batch = self.poison_list * std + mean
+        self.base_range_m_batch = self.poison_nearest_neighbor_tensor_concat * std + mean
         self.target_img=self.target_img.to(self.device)
 
 
@@ -219,7 +219,7 @@ class Convex_polytop_attack(torch.nn.Module):
             self.optimizer.step()
             # cliping the poison images so that the infinity norm constraint is satisfied..
             perturb_range01 = torch.clamp((self.poison_list.venom.data - self.poison_nearest_neighbor_tensor_concat) * std, -epsilon, epsilon)
-            perturbed_range01 = torch.clamp(self.base_range01_batch.data + perturb_range01.data, 0, 1)
+            perturbed_range01 = torch.clamp(self.base_range_m_batch.data + perturb_range01.data, 0, 1)
             self.poison_list.venom.data = (perturbed_range01 - self.mean) / self.std
             # Update the itteration
             iter+=1
