@@ -53,7 +53,7 @@ class CustomDataset(Dataset):
             sample[0]= sample[0][:W]
         else :
             sample[0] = sample[0][:,:H]
-        sample[0] = self.resize(torch.from_numpy(sample[0]).moveaxis(-1,0))/to(torch.float32)/255
+        sample[0] = self.resize(torch.from_numpy(sample[0]).moveaxis(-1,0)).to(torch.float32)/255
         if self.transform is not None :
             sample = self.transform(sample)
 
