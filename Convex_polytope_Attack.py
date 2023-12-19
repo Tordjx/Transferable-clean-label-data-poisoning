@@ -63,7 +63,8 @@ class Convex_polytop_attack(torch.nn.Module):
         self.nbr_of_poisons = len(self.poison_nearest_neighbor_tensor)
         self.poison_nearest_neighbor_tensor_concat = torch.stack(self.poison_nearest_neighbor_tensor, 0)
         self.poison_list = help_functions.Poisonlist(self.initialization_poison).to(self.device) # We create a batch of learnable parameters from a list of tensors, and provides a method to access these parameters to simplify the optimization process.
-        self.base_range_m_batch = self.poison_nearest_neighbor_tensor_concat * std + mean
+        #self.base_range_m_batch = self.poison_nearest_neighbor_tensor_concat * std + mean
+        self.base_range_m_batch = transforms.Normalize(mean, std,)(self.poison_nearest_neighbor_tensor_concat)
         self.target_img=self.target_img.to(self.device)
 
 
@@ -181,13 +182,13 @@ class Convex_polytop_attack(torch.nn.Module):
 
 
 
-    def poisan_generation(self,decay_ratio=0.1,tol_inner=1e-6,max_itter_inner=10000,epsilon=0.1,pos_label_poison=-1):
+    def poison_generation(self,decay_ratio=0.1,tol_inner=1e-6,max_itter_inner=10000,epsilon=0.1,pos_label_poison=-1):
         '''
         This function corresponds to the algorithm 1 of the paper.
         '''
 
         #self.target_pretrained_net.eval() # We put the target model in evaluation mode so that our attck is not trained on the target model.
-        std, mean = std.to(self.device), mean.to(self.device)
+        std, mean = self.std.to(self.device), self.mean.to(self.device)
         target_list = []
         s_init_coeff_list = []
         
@@ -195,7 +196,8 @@ class Convex_polytop_attack(torch.nn.Module):
 
         for l,net in enumerate(self.pre_trained_model): # We loop over the models that we want to attack.
             net.eval() # We put the model in evaluation mode so that our attck is not trained on the model.
-            target_list.append(net(x=self.target_img, penu=True).detach())
+            with torch.no_grad():
+                target_list.append(net(x=self.target_img).detach())
             s_init_coeff_list.append(torch.ones(self.nbr_of_poisons, 1).to(self.device) / self.nbr_of_poisons)
         while iter<self.poison_max_iter and iter<self.decay_end+1:
             
