@@ -12,7 +12,7 @@ from torchvision.transforms import Resize
 
 
 class CustomDataset(Dataset):
-    def __init__(self, data_dir ,train=True,transform=None):
+    def __init__(self, data_dir ,train=True,transform=None, poison_dir =None, return_names = False , poison_num = None):
         """
         Args:
             data (list): A list of input data.
@@ -23,7 +23,14 @@ class CustomDataset(Dataset):
         self.train = train
         self.transform = transform
         self.data_dir = data_dir
-        self.resize =Resize((128,128))
+        self.poison_num = poison_num
+        self.poison_dir = poison_dir
+        self.resize =Resize((128,128), antialias = True)
+        self.return_names = return_names
+        if self.poison_dir != None : 
+            self.poison_names = os.listdir(poison_dir)
+            if self.poison_num != None : 
+                self.poison_names = self.poison_names[:self.poison_num]
         if self.train : 
             self.path= os.path.join(data_dir, "GTSRB_Final_Train")
             
@@ -31,17 +38,31 @@ class CustomDataset(Dataset):
             self.path = path= os.path.join(self.data_dir, 'GTSRB_Final_Test_Images/GTSRB/Final_Test/Images/')
             self.gt_df = pd.read_csv(os.path.join(self.data_dir, "GTSRB_Final_Test_GT/GT-final_test.csv"), sep = ";")
     def load_train(self, idx) :
-        name = os.listdir(os.path.join(self.path))[idx]
+        name = [x for x in os.listdir(self.path) if "csv" not in x ][idx]
         c = name.split('@')[0]
-        image = skimage.io.imread(os.path.join(self.path, name))
-        return [image, c]
+        hyp_name = name.replace("ppm","npy") if len(c)==2 else "0"+name.replace("ppm","npy")
+        if self.poison_dir !=None : 
+            if hyp_name in self.poison_names :
+                image =np.moveaxis(np.load(os.path.join(self.poison_dir,  hyp_name )),0,-1)
+                
+            else : 
+                image = skimage.io.imread(os.path.join(self.path, name))
+        else :
+            image = skimage.io.imread(os.path.join(self.path, name))
+        if self.return_names : 
+            return [image, int(c),name]
+        else:  
+            return [image, int(c)]
     def load_test(self,idx) : 
-        
-        image = skimage.io.imread(os.path.join(self.path, os.listdir(self.path)[idx]))
-        c = self.gt_df[self.gt_df['Filename'] == os.listdir(self.path)[idx]]['ClassId'].values
-        return [image, c]
+        name = [x for x in os.listdir(self.path) if "csv" not in x ][idx]
+        image = skimage.io.imread(os.path.join(self.path, name))
+        c = self.gt_df[self.gt_df['Filename'] == name]['ClassId'].values[0]
+        if self.return_names : 
+            return [image, int(c),name]
+        else:  
+            return [image, int(c)]
     def __len__(self):
-        return len(os.listdir(self.path))
+        return len([x for x in os.listdir(self.path) if "csv" not in x ])
 
     def __getitem__(self, idx):
         if self.train : 
@@ -56,6 +77,6 @@ class CustomDataset(Dataset):
         sample[0] = self.resize(torch.from_numpy(sample[0]).moveaxis(-1,0)).to(torch.float32)/255
         if self.transform is not None :
             sample = self.transform(sample)
-
+        
         return sample
 
