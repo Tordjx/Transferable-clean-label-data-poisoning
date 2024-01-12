@@ -1,7 +1,7 @@
 import os ,shutil
 
-data_dir = '/home/tordjx/DATA_DIR/managed_folders/TRANSFERABLECLEANDATAPOISONING/taDcFTul/'
-output_dir = "/home/tordjx/DATA_DIR/managed_folders/TRANSFERABLECLEANDATAPOISONING/LMc8Smw6/"
+data_dir = 'put the path to the GTSRB folder here'
+output_dir = "put the path to the output folder here"
 os.makedirs(os.path.join(output_dir, "GTSRB_Final_Test_GT"),exist_ok=True)
 os.makedirs(os.path.join(output_dir, "GTSRB_Final_Test_Images"),exist_ok=True)
 shutil.copytree(os.path.join(data_dir, "GTSRB_Final_Test_GT"), os.path.join(output_dir, "GTSRB_Final_Test_GT"),dirs_exist_ok = True)
