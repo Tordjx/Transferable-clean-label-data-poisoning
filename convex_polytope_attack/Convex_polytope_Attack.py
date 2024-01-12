@@ -2,8 +2,8 @@
 import torch
 from torch import nn
 import warnings
-import help_functions
-from help_functions import project_onto_simplex,objctif_function,grad_obj_function,spectral_radius_AA_T,get_nearest_poison
+import convex_polytope_attack.help_functions as help_functions
+from convex_polytope_attack.help_functions import project_onto_simplex,objctif_function,grad_obj_function,spectral_radius_AA_T,get_nearest_poison
 import torchvision.transforms as transforms
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
