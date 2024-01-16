@@ -35,8 +35,6 @@ As previously mentioned, the primary goal of this project is to investigate an a
 
 Our initiation into this topic was inspired by the paper [Transferable Clean-Label Poisoning Attacks on Deep Neural Nets]((https://doi.org/10.48550/arXiv.1905.05897)), published in 2019. An implementation of their approach can be found in the [convex polytope attack](convex_polytope_attack/Convex_polytope_Attack.py) folder . While our code draws inspiration mainly from their implementation for simulation, it has been adapted to an object-oriented structure.
 
-For our experiments, we utilized the Residual Neural Network model (ResNet). The implementation of this model is available in the [models.py](models.py) file. 
-
 
 
 
