@@ -115,14 +115,6 @@ Here are a few instances of perturbation as we modify the number of encoders, fr
 
 With substantial L2 penalization and an increased number of encoders, the perturbation becomes less perceptible.
 
-Here is a figure describing the components of the discriminator losses during training.
-
-![Alt text](<images/disc losses.png>)
-
-Also, here is a plot of the discrimination and generation losses during training.
-
-![Alt text](<images/gen et disc loss.png>)
-
 In a black-box context, where the target network differs from surrogates, we evaluate performance degradation across various backbones—utilizing 3 and 5 surrogate networks. For ResNest101e, akin to ResNest26D, accuracy results are detailed in the table below.
 
 |                 | Clean | 10% Poisoned | 50% Poisoned | 100% Poisoned |
