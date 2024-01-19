@@ -76,17 +76,17 @@ Here are a few instances of perturbation as we alter the parameter $\alpha$, whi
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
 
   <div style="flex-basis: 30%;">
-    <img src="images/alpha1.png" alt="Image with $\alpha$ = 1" width="100%">
+    <img src="images/alpha1.png" alt="Image with $\alpha$ = 1" width="30%">
     <p style="text-align: center;">Figure 1: $\alpha$ = 1</p>
   </div>
 
   <div style="flex-basis: 30%;">
-    <img src="images/alpha100.png" alt="Image with $\alpha$ = 100" width="100%">
+    <img src="images/alpha100.png" alt="Image with $\alpha$ = 100" width="30%">
     <p style="text-align: center;">Figure 2: $\alpha$ = 100</p>
   </div>
 
   <div style="flex-basis: 30%;">
-    <img src="images/alpha1000.png" alt="Image with $\alpha$ = 1000" width="100%">
+    <img src="images/alpha1000.png" alt="Image with $\alpha$ = 1000" width="30%">
     <p style="text-align: center;">Figure 3: $\alpha$ = 1000</p>
   </div>
 
@@ -97,17 +97,17 @@ Here are a few instances of perturbation as we modify the number of encoders, fr
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
 
   <div style="flex-basis: 30%;">
-    <img src="images/1bkb.png" alt="Image with $\alpha$ = 1" width="100%">
+    <img src="images/1bkb.png" alt="Image with $\alpha$ = 1" width="30%">
     <p style="text-align: center;">Figure 1: 1 Backbone (ResNest26D)</p>
   </div>
 
   <div style="flex-basis: 30%;">
-    <img src="images/3bkb.png" alt="Image with $\alpha$ = 100" width="100%">
+    <img src="images/3bkb.png" alt="Image with $\alpha$ = 100" width="30%">
     <p style="text-align: center;">Figure 2: 3 Backbones (ResNet34, EfficientNetB0, and Resnest26d)</p>
   </div>
 
   <div style="flex-basis: 30%;">
-    <img src="images/5bkb.png" alt="Image with $\alpha$ = 1000" width="100%">
+    <img src="images/5bkb.png" alt="Image with $\alpha$ = 1000" width="30%">
     <p style="text-align: center;">Figure 3: 5 Backbones (ResNet34, EfficientNetB0, Resnest26d, RegNetX_006, and DenseNet121)</p>
   </div>
 
