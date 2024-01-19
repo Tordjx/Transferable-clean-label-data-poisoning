@@ -76,21 +76,22 @@ Here are a few instances of perturbation as we alter the parameter $\alpha$, whi
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
 
   <div style="flex-basis: 20%;">
-    <img src="images/alpha1.png" alt="Image with $\alpha$ = 1" width="20%">
+    <img src="images/alpha1.png" alt="Image with $\alpha$ = 1" width="100%">
     <p style="text-align: center;">Figure 1: $\alpha$ = 1</p>
   </div>
 
   <div style="flex-basis: 20%;">
-    <img src="images/alpha100.png" alt="Image with $\alpha$ = 100" width="20%">
+    <img src="images/alpha100.png" alt="Image with $\alpha$ = 100" width="100%">
     <p style="text-align: center;">Figure 2: $\alpha$ = 100</p>
   </div>
 
   <div style="flex-basis: 20%;">
-    <img src="images/alpha1000.png" alt="Image with $\alpha$ = 1000" width="20%">
+    <img src="images/alpha1000.png" alt="Image with $\alpha$ = 1000" width="100%">
     <p style="text-align: center;">Figure 3: $\alpha$ = 1000</p>
   </div>
 
 </div>
+
 
 Here are a few instances of perturbation as we modify the number of encoders, from 1 to 5.
 
