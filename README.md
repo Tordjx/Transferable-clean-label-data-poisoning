@@ -31,10 +31,9 @@ In this project, we suggest employing an adversarial approach to impair the effi
 - [References](#References)
 
 ##  About <a name = "about"></a>
-As previously mentioned, the primary goal of this project is to investigate an adversarial technique aimed at reducing the efficacy of a deep neural network classifier. This involves employing surrogate backbones as substitutes for the undisclosed model targeted for poisoning. We assess the transferability to alternative backbones and evaluate the performance of our methodology in both white box and black box settings.
+As previously mentioned, the primary goal of this project is to investigate an adversarial technique aimed at reducing the accuracy of a deep neural network classifier. This involves employing surrogate backbones as substitutes for the undisclosed model targeted for poisoning. We assess the transferability to alternative backbones and evaluate the performance of our methodology in both white box and black box settings.
 
-Our initiation into this topic was inspired by the paper [Transferable Clean-Label Poisoning Attacks on Deep Neural Nets]((https://doi.org/10.48550/arXiv.1905.05897)), published in 2019. An implementation of their approach can be found in the [convex polytope attack](convex_polytope_attack/Convex_polytope_Attack.py) folder . While our code draws inspiration mainly from their implementation for simulation, it has been adapted to an object-oriented structure.
-
+Our initiation into this topic was inspired by the paper [Transferable Clean-Label Poisoning Attacks on Deep Neural Nets]((https://doi.org/10.48550/arXiv.1905.05897)), published in 2019. An implementation of their approach can be found in the [convex polytope attack](convex_polytope_attack/Convex_polytope_Attack.py) folder . 
 
 
 
@@ -60,7 +59,7 @@ Unzip these datasets in a directory to replicate our experiments. The selection 
 
 ## Installing <a name = "Installing"></a>
 
-To ensure that you have all the libraries used in our simulations, you can refer to the file  [requirments.txt](requirements.txt).\
+To ensure that you have all the libraries used in our simulations, you can refer to the file  [requirements.txt](requirements.txt).\
 You can run the following command to install the missing libraries.
 ```
 pip install -r requirements.txt
@@ -76,7 +75,7 @@ After modifying the path to your dataset and fix the output path you can run the
 ```
 python3 preprocessing.py
 ```
-Now you are ready to reproduce the experiments thanks to our 2 notebooks. Run [GAN.ipynb](GAN.ipynb) to creat the poisened images and then you use [Classifier.ipynb](Classifiers.ipynb)  to make experiments.
+Now you are ready to reproduce the experiments thanks to our 2 notebooks. Run [GAN.ipynb](GAN.ipynb) to creat the poisoned images and then you use [Classifier.ipynb](Classifiers.ipynb)  to make experiments.
 
 
 ## Results <a name = "Results"></a>
